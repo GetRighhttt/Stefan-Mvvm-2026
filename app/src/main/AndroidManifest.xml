@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+Declares the launcher activity for both examples. The renderer switch replaces internal fragments,
+so neither fragment needs a manifest entry. adjustResize lets the host receive keyboard insets;
+MainActivity applies them to the shared parent. Backup resources define the app's backup policy.
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
@@ -14,7 +19,8 @@
         tools:targetApi="31">
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

@@ -1,3 +1,7 @@
+# App-specific shrinker rules referenced by app/build.gradle.kts. Release minification is currently
+# disabled, so these rules are inactive. Add rules for actual reflection or library requirements when
+# minification is enabled; the template examples below are comments, not active keep rules.
+
 # Add project specific ProGuard rules here.
 # You can control the set of applied configuration files using the
 # proguardFiles setting in build.gradle.

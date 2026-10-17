@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+Draws the background layer used by both adaptive launcher icons. Its viewport coordinates define
+the artwork independently of device density; the launcher combines it with ic_launcher_foreground.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"

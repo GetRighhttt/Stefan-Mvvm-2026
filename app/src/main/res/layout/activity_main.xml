@@ -1,128 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+<!--
+Keeps the renderer switch outside the replaceable login view. MainActivity replaces the fragment in
+login_container and uses the restored fragment to initialize use_compose after recreation. Window
+and keyboard insets are applied to this root so both child implementations get the same usable area.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity">
+    android:orientation="vertical">
 
-    <com.google.android.material.textview.MaterialTextView
-        style="@style/TextAppearance.AppCompat.Large"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
-        android:text="@string/login_stateflow_example"
-        android:textColor="#900505"
-        android:textSize="30sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/textInputLayoutLogin"
-        style="@style/Widget.Material3.TextInputEditText.FilledBox.Dense"
+    <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/use_compose"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="200dp"
-        android:layout_marginEnd="20dp"
-        app:helperText="Login with your credentials"
-        app:helperTextTextColor="#900505"
-        app:layout_constraintBottom_toTopOf="@id/textInputLayoutPassword"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:minHeight="48dp"
+        android:paddingHorizontal="24dp"
+        android:text="@string/use_compose" />
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_login"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:drawableStart="@drawable/baseline_person_24"
-            android:hint="@string/login"
-            android:inputType="textEmailAddress" />
-
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/textInputLayoutPassword"
-        style="@style/Widget.Material3.TextInputEditText.FilledBox.Dense"
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/login_container"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="20dp"
-        app:helperText="Please enter your password"
-        app:helperTextTextColor="#900505"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/textInputLayoutLogin">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_password"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:drawableStart="@drawable/baseline_lock_24"
-            android:hint="@string/password"
-            android:inputType="textPassword" />
-
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <androidx.coordinatorlayout.widget.CoordinatorLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:contentDescription="@string/login"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="@id/textInputLayoutPassword"
-        app:layout_constraintTop_toBottomOf="@id/textInputLayoutPassword">
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/btn_login"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:layout_marginEnd="20dp"
-            android:contentDescription="@string/login"
-            android:elevation="40dp"
-            android:shadowColor="@color/black"
-            android:src="@drawable/baseline_add_24"
-            android:tint="#BD2323"
-            app:backgroundTint="@android:color/holo_green_light"
-            app:fabSize="normal"
-            app:rippleColor="@color/design_default_color_secondary"
-            app:useCompatPadding="true" />
-
-    </androidx.coordinatorlayout.widget.CoordinatorLayout>
-
-    <androidx.coordinatorlayout.widget.CoordinatorLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="@id/textInputLayoutLogin"
-        app:layout_constraintTop_toBottomOf="@id/textInputLayoutPassword">
-
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/btn_clear"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:layout_marginStart="20dp"
-            android:contentDescription="@string/clear"
-            android:elevation="40dp"
-            android:shadowColor="@color/black"
-            android:src="@drawable/baseline_indeterminate_check_box_24"
-            android:text="@string/clear"
-            app:backgroundTint="?attr/colorError"
-            app:fabSize="normal"
-            app:rippleColor="#0A1137"
-            app:useCompatPadding="true" />
-    </androidx.coordinatorlayout.widget.CoordinatorLayout>
-
-    <ProgressBar
-        android:id="@+id/progressBar"
-        style="?android:attr/progressBarStyle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/textInputLayoutPassword" />
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+</LinearLayout>

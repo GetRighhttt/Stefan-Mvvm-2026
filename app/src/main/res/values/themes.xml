@@ -1,3 +1,8 @@
+<!--
+Sets the Material DayNight theme for the activity, XML widgets, and DialogFragment. The alias used
+by the manifest inherits this base style. ComposeLoginFragment chooses its own Compose MaterialTheme
+from the same system light or dark setting.
+-->
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.StateFlow" parent="Theme.Material3.DayNight.NoActionBar">

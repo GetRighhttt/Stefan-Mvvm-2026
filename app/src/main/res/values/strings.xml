@@ -1,7 +1,24 @@
+<!--
+Supplies the labels and messages used by both UI implementations. LoginResources maps dialog and
+effect values to these IDs. Keeping that mapping and the translated text outside the ViewModel
+lets the state and action contract stay independent of Android UI resources.
+-->
 <resources>
     <string name="app_name">StateFlow</string>
     <string name="password">Password</string>
     <string name="login">Login</string>
     <string name="clear">Clear</string>
     <string name="login_stateflow_example">Login StateFlow Example</string>
+    <string name="login_helper">Login with your credentials</string>
+    <string name="password_helper">Please enter your password</string>
+    <string name="login_dialog_title">Login result</string>
+    <string name="login_success">Success! You have successfully logged in.</string>
+    <string name="login_failure">Login attempt failed. Please try again.</string>
+    <string name="clear_confirmation">Are you sure you want to clear all the data?</string>
+    <string name="loading">Logging in</string>
+    <string name="use_compose">Use Compose</string>
+    <string name="missing_credentials">Enter a username and password.</string>
+    <string name="form_cleared">Form cleared.</string>
+    <string name="show_password">Show</string>
+    <string name="hide_password">Hide</string>
 </resources>

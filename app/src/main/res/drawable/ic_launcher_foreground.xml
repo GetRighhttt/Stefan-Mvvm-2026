@@ -1,3 +1,8 @@
+<!--
+Draws the foreground layer shared by the regular, round, and monochrome launcher icon definitions.
+Edit the adaptive icon resources to change which layer is used; edit this vector to change its
+artwork. This resource is unrelated to either login renderer.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"

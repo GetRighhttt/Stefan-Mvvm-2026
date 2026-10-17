@@ -1,3 +1,6 @@
+# Excludes generated builds, compiler caches, and machine-specific Android Studio or SDK settings.
+# Source files and the Gradle wrapper remain versioned so another checkout can build the example.
+
 *.iml
 .gradle
 /local.properties
@@ -13,3 +16,4 @@
 .externalNativeBuild
 .cxx
 local.properties
+.kotlin/

@@ -1,67 +1,94 @@
+/**
+ * Owns the form and login attempt independently of the selected UI toolkit.
+ *
+ * `onAction()` is the entry point for both screens. Input actions update `uiState`; confirmation and
+ * result actions change the dialog state or reset the form. Keeping those decisions here gives the
+ * XML and Compose implementations the same behavior.
+ *
+ * `login()` checks blank inputs, ignores another submission while loading or showing a dialog, and
+ * captures the credentials before the delayed check. It updates the existing state so a clear
+ * confirmation opened during loading still takes priority when the result arrives. `clear()` cancels
+ * the job before resetting the form, so an earlier attempt cannot produce a later result.
+ *
+ * Explicit backing fields keep the public flow types and mutable storage in one declaration.
+ * Callers see `uiState` as StateFlow and `effects` as SharedFlow. Inside this class, Kotlin uses the
+ * inferred MutableStateFlow and MutableSharedFlow field types for `update()`, value assignment, and
+ * `tryEmit()`. This is a compile-time API boundary; each getter returns its mutable field object
+ * directly rather than wrapping it in another read-only flow object.
+ *
+ * The state holds inputs, status, and dialogs. Effects carry temporary validation and clear messages.
+ * Zero replay and a bounded buffer allow messages to be dropped when no screen is collecting or a
+ * collector falls behind. Results that need acknowledgement stay in state.
+ */
 package com.example.stateflow
 
-import android.util.Log
-import androidx.lifecycle.*
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.stateflow.model.Login
+import com.example.stateflow.model.LoginAction
+import com.example.stateflow.model.LoginEffect
+import com.example.stateflow.model.LoginStatus
+import com.example.stateflow.model.LoginUiState
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class MainViewModel : ViewModel() {
+    val uiState: StateFlow<LoginUiState>
+        field = MutableStateFlow(LoginUiState())
 
-    private val _loginState = MutableStateFlow<LoginState>(LoginState.Empty)
-    val loginState: StateFlow<LoginState> = _loginState
+    val effects: SharedFlow<LoginEffect>
+        field = MutableSharedFlow<LoginEffect>(
+            replay = 0,
+            extraBufferCapacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        )
+    private var loginJob: Job? = null
 
-    companion object {
-        const val TAG = "VIEW_MODEL"
-    }
-
-    init {
-        Log.d(TAG, "MainViewModel Initialized.")
-
-        // sets an idle state for the login variable to wait for the text
-        _loginState.value = LoginState.Idle
-        Log.d(TAG, "Login state is IDLE...")
-    }
-
-    fun login(username: String, password: String) {
-
-        /*
-        Using our Login data class for our username and password values.
-        Kotlin destructing syntax allows us to do this without creating an object
-        of that class.
-         */
-        val (name, pass) = Login(username, password)
-
-        try {
-            viewModelScope.launch {
-                _loginState.value = LoginState.Loading
-                delay(1000L)
-                if (name == "username" && pass == "password") {
-                    _loginState.value =
-                        LoginState.Success(successMessage = "Success! You have successfully logged in.")
-                } else {
-                    _loginState.value =
-                        LoginState.Failure(errorMessage = "Login attempt failed. Please try again.")
-                }
+    fun onAction(action: LoginAction) {
+        when (action) {
+            is LoginAction.UsernameChanged -> uiState.update { it.copy(username = action.value) }
+            is LoginAction.PasswordChanged -> uiState.update { it.copy(password = action.value) }
+            LoginAction.Submit -> login()
+            LoginAction.RequestClear -> uiState.update { it.copy(confirmClear = true) }
+            LoginAction.CancelClear -> uiState.update { it.copy(confirmClear = false) }
+            LoginAction.ConfirmClear -> {
+                clear()
+                effects.tryEmit(LoginEffect.FormCleared)
             }
-        } catch (e: Exception) {
-            Log.d(TAG, "Error when launching viewModelScope: $e")
+            LoginAction.DismissResult -> clear()
         }
     }
 
-    // sets empty state in cleared method in main.
-    fun setEmptyState() {
-        _loginState.value = LoginState.Empty
-        Log.d(TAG, "Login state is EMPTY...")
+    private fun login() {
+        val state = uiState.value
+        if (state.status == LoginStatus.Loading || state.dialog != null) return
+        if (state.username.isBlank() || state.password.isBlank()) {
+            effects.tryEmit(LoginEffect.MissingCredentials)
+            return
+        }
+        val credentials = Login(state.username, state.password)
+        uiState.update { it.copy(status = LoginStatus.Loading) }
+        loginJob = viewModelScope.launch {
+            delay(1_000L)
+            val result = if (credentials.username == "username" && credentials.password == "password") {
+                LoginStatus.Success
+            } else {
+                LoginStatus.Failure
+            }
+            uiState.update { it.copy(status = result) }
+        }
     }
 
-    // Sealed class to handle state of Login.
-    sealed class LoginState {
-        object Empty : LoginState()
-        object Idle : LoginState()
-        data class Success(val successMessage: String) : LoginState()
-        data class Failure(val errorMessage: String) : LoginState()
-        object Loading : LoginState()
+    private fun clear() {
+        loginJob?.cancel()
+        loginJob = null
+        uiState.value = LoginUiState()
     }
 }
