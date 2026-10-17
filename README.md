@@ -6,6 +6,14 @@ The same login feature has XML with View Binding and Jetpack Compose renderers. 
 
 This repository is intended to be read. Each Kotlin file has one main KDoc that explains its responsibility and the decisions that matter. The README describes how those files work together.
 
+## Screenshots
+
+Both renderers use the same state, actions, validation, and repository work while keeping their own presentation style.
+
+| XML with View Binding | Jetpack Compose |
+| --- | --- |
+| <img src="docs/screenshots/xml-renderer.png" alt="MVVM 2026 XML renderer showing the loaded account notice" width="360" /> | <img src="docs/screenshots/compose-renderer.png" alt="MVVM 2026 Compose renderer showing the login form" width="360" /> |
+
 ## Refactoring record
 
 This repository began as a focused StateFlow example. The refactor turned it into a current MVVM reference without hiding that history behind a finished sample. The main changes were:
