@@ -1,146 +1,214 @@
-# StateFlow and SharedFlow: XML and Compose
+# MVVM_2026
 
-I keep this repository as a reference for Android architecture and implementation choices. It started as a small Kotlin login example. Revisiting it with more experience gave me a way to document how I would expand that architecture today, using patterns I work with in production.
+MVVM_2026 is my reference for structuring a modern Android feature with MVVM. The project keeps the example small enough to read in one sitting while showing the boundaries I expect in production code: separate presentation, domain, and data models; explicit mapping between layers; repository contracts owned by domain; coroutine cancellation; durable state; and temporary effects.
 
-The current example has XML with View Binding and Jetpack Compose implementations sharing one ViewModel. Use the **Use Compose** switch to compare them. The inputs, login attempt, and dialog state follow you between screens.
+The same login feature has XML with View Binding and Jetpack Compose renderers. The **Use Compose** switch replaces one renderer with the other while both use the same activity-scoped `MainViewModel`. The different palettes make the active renderer clear. The state, validation, repository work, and loaded account data remain the same.
 
-The README explains the architecture and tradeoffs. KDoc at the top of each Kotlin source file explains its methods, implementation choices, and role in the example. Layouts and build configuration have equivalent comments. The intention is to make this repository useful when I need to revisit a pattern, compare approaches, or extend the example later.
+This repository is intended to be read. Each Kotlin file has one main KDoc that explains its responsibility and the decisions that matter. The README describes how those files work together.
 
-## Try it
+## Refactoring record
 
-Enter `username` and `password` for a successful login. Other nonblank credentials fail after one second. Submitting blank inputs shows a validation Snackbar. Clear opens a confirmation dialog; confirming cancels any pending login, empties the form, and shows a Snackbar.
+This repository began as a focused StateFlow example. The refactor turned it into a current MVVM reference without hiding that history behind a finished sample. The main changes were:
 
-Try switching while login is loading, rotating with a result dialog open, or switching immediately after a Snackbar. The screen state stays available. An old Snackbar is not replayed on the next screen.
+- Modernized Gradle, the Android Gradle Plugin, Kotlin, Android SDK levels, and AndroidX dependencies.
+- Renamed the project, package, application ID, themes, and visible branding to `MVVM_2026`.
+- Reduced the activity to hosting, renderer selection, shared ViewModel ownership, insets, and lifecycle work.
+- Added XML and Compose renderers for the same feature so their state and effect handling can be compared directly.
+- Split presentation, domain, and data responsibilities, with models and mappings owned by each layer.
+- Moved repository contracts into domain and their concrete implementation and simulated source into data.
+- Added typed credential validation, simulated authentication, account loading, cancellation, and lifecycle-aware notice dismissal.
+- Replaced incidental comments with one focused KDoc per Kotlin file and tests that document the important behavior.
 
-## Shared architecture
+The refactor follows the structure this project needs now. Feature and core modules can be introduced when ownership, reuse, or build boundaries justify them.
 
-`MainActivity` hosts either `XmlLoginFragment` or `ComposeLoginFragment`. Both use `activityViewModels()` to obtain the same `MainViewModel`. Replacing the fragment destroys the old view and its collectors. The ViewModel remains alive for the activity.
+## Run the example
+
+Use these sample credentials:
+
+```text
+Username: username
+Password: Password1!
+```
+
+The password demonstrates every required category: uppercase, lowercase, number, and symbol.
+
+On launch, a simulated account request takes four seconds. The loading card then changes to a success notice with an eight-second countdown and a **Dismiss now** action. The countdown pauses while the activity is outside the resumed lifecycle, survives renderer changes, and respects Android's recommended accessibility timeout.
+
+A valid login format starts a one-second credential lookup. The sample credentials succeed. Other well-formed credentials are rejected. Invalid input stays out of data access and displays typed field errors.
+
+## Architecture
 
 ```mermaid
 flowchart LR
-    XML[XML fragment] -->|LoginAction| VM[MainViewModel]
-    Compose[Compose fragment] -->|LoginAction| VM
-    VM -->|StateFlow: LoginUiState| XML
-    VM -->|StateFlow: LoginUiState| Compose
-    VM -->|SharedFlow: LoginEffect| XML
-    VM -->|SharedFlow: LoginEffect| Compose
+    XML[XML renderer] -->|LoginAction| VM[MainViewModel]
+    Compose[Compose renderer] -->|LoginAction| VM
+    VM -->|LoginUiState and AccountUiState| XML
+    VM -->|LoginUiState and AccountUiState| Compose
+    VM -->|LoginEffect| XML
+    VM -->|LoginEffect| Compose
+    VM -->|Login and account IDs| Contract[LoginRepository]
+    Contract -. implemented by .-> Repository[LoginRepositoryImpl]
+    Repository --> Rules[ValidateCredentials]
+    Repository --> Source[AccountDataSource]
+    Source -. implemented by .-> Simulation[AccountDataSourceImpl]
 ```
 
-Only the selected screen is mounted. The diagram shows the two implementations of the same contract, not two simultaneous collectors.
+Only the selected renderer is mounted. The diagram shows two views of one feature, not two screens collecting effects at the same time.
 
-| Contract | Holds | Examples |
-| --- | --- | --- |
-| `LoginAction` | Input from either UI | Change username, submit, confirm clear, dismiss result. |
-| `StateFlow<LoginUiState>` | The current screen state | Inputs, idle/loading/success/failure, clear confirmation. |
-| `SharedFlow<LoginEffect>` | Temporary messages | Missing credentials and form cleared. |
+### Presentation
 
-### StateFlow
+Presentation owns Android UI, renderer behavior, observable UI models, actions, effects, dialogs, and resource mapping.
 
-`uiState` declares a public `StateFlow<LoginUiState>` with an explicit `MutableStateFlow` backing field. The ViewModel owns the form values, so switching screens does not require copying text between UI implementations.
+`MainViewModel` accepts `LoginAction` values and exposes three flows:
 
-Login sets `Loading` immediately and starts a coroutine in `viewModelScope`. Further submissions are ignored while loading. Both UIs disable login and the text fields during that attempt. After one second, the ViewModel updates the status to `Success` or `Failure`.
+| Flow | Responsibility |
+| --- | --- |
+| `StateFlow<LoginUiState>` | Form values, field errors, login status, and dialogs. |
+| `StateFlow<AccountUiState>` | Independent account loading, loaded display models, failure, and notice countdown. |
+| `SharedFlow<LoginEffect>` | Temporary validation and form-cleared Snackbar messages. |
 
-Result dialogs are derived from state because the result must remain available after rotation, backgrounding, or switching screens. Clear confirmation takes priority over a result that arrives while it is open. Cancel reveals that result; confirm cancels the attempt and resets the form. Acknowledging or cancelling a result also resets the form.
+Durable information belongs in `StateFlow`. A result dialog must survive recreation, so it is derived from `LoginUiState`. Loaded accounts and the notice countdown also remain in state. Snackbars are temporary and use a non-replaying `SharedFlow`.
 
-### SharedFlow
+The effects flow has `replay = 0`, one extra buffer slot, and `BufferOverflow.SUSPEND`. The ViewModel calls `emit` from `viewModelScope`. Suspension applies backpressure when an active collector fills the buffer. With no subscriber, replay-zero effects are not retained for a later renderer. Completion of `emit` means the flow accepted the value under those rules; it cannot guarantee that UI or business work will succeed.
 
-`effects` declares a public `SharedFlow<LoginEffect>` with an explicit `MutableSharedFlow` backing field. It uses `replay = 0`, `extraBufferCapacity = 1`, and `BufferOverflow.DROP_OLDEST`. The ViewModel uses `tryEmit()` so a temporary message never holds up an action.
-
-An active collector can receive the message once. A new collector receives no previous messages. With no subscribers, an emitted message is dropped; the extra buffer does not store it for the next screen. A slow collector can also lose an older buffered message. This is acceptable for these Snackbars. A result that the user must acknowledge belongs in `uiState` instead.
-
-SharedFlow broadcasts to all active subscribers. It does not choose one consumer or guarantee delivery exactly once. The fragment replacement and view lifecycle keep only the selected example collecting here. See [StateFlow and SharedFlow on Android](https://developer.android.com/kotlin/flow/stateflow-and-sharedflow).
-
-### Kotlin property design
-
-The example uses Kotlin 2.4.21, with language and API versions pinned to 2.4. Explicit backing fields are [stable in Kotlin 2.4](https://kotlinlang.org/docs/whatsnew24.html#stable-features), so no experimental flag is needed.
+The project uses Kotlin 2.4 explicit backing fields:
 
 ```kotlin
 val uiState: StateFlow<LoginUiState>
     field = MutableStateFlow(LoginUiState())
 ```
 
-The declared property type is the public contract. Kotlin infers the backing field's mutable type and uses that narrower type inside `MainViewModel`. The class can call `uiState.update { ... }` and assign `uiState.value`; the XML and Compose screens see only `StateFlow<LoginUiState>`. The same pattern lets the ViewModel call `effects.tryEmit()` while callers receive `SharedFlow<LoginEffect>`.
+Callers receive the read-only contract. `MainViewModel` can update the inferred mutable field without a second underscore-prefixed property or a wrapper flow.
 
-Each flow has one property declaration. The previous underscore-prefixed backing properties and `asStateFlow()` / `asSharedFlow()` wrappers have been removed. The getter returns the field object directly. Read-only describes the compile-time API; it does not make the underlying object immutable or prevent a deliberate cast to a mutable flow type. See [explicit backing fields](https://kotlinlang.org/docs/properties.html#explicit-backing-fields).
+### Domain
 
-The rest of the code uses sealed interfaces and data objects for the action, effect, and login-status cases, data classes for state snapshots, and exhaustive `when` expressions for handling them. The project uses stable features available in Kotlin 2.4.21.
+Domain owns business models, validation rules, repository contracts, and results. It has no Android or data-layer dependencies.
 
-## Compare the implementations
+`ValidateCredentials` returns typed `UsernameError` and `PasswordError` values. The rules are:
 
-| Concern | XML and View Binding | Compose |
-| --- | --- | --- |
-| State collection | `viewLifecycleOwner.repeatOnLifecycle(RESUMED)` and `collect`. | `collectAsStateWithLifecycle(RESUMED)`. |
-| Rendering | Set text only when different, then update progress, enabled states, and the child DialogFragment. | Pass state and an action callback to `LoginScreen`; recomposition renders changes. |
-| Effect collection | A sibling coroutine inside the same lifecycle block displays a Material Snackbar. | `LaunchedEffect` with `repeatOnLifecycle(RESUMED)` displays messages through SnackbarHostState. |
-| Dialogs | A child DialogFragment uses the shared ViewModel and reports actions. Its tag prevents duplicate dialogs. | An AlertDialog is present whenever `state.dialog` has a value. |
-| Cleanup | The view lifecycle cancels collectors; `onDestroyView()` dismisses its Snackbar. | ComposeView uses `DisposeOnViewTreeLifecycleDestroyed`; disposal cancels the effect coroutine. |
-
-The host activity applies system-bar, display-cutout, and keyboard insets once for both screens. Both forms scroll when space is limited and follow the system light or dark theme.
-
-## Where to look
-
-| File | Responsibility |
+| Field | Rule |
 | --- | --- |
-| [MainActivity.kt](app/src/main/java/com/example/stateflow/MainActivity.kt) | Host, insets, and the UI switch. |
-| [MainViewModel.kt](app/src/main/java/com/example/stateflow/MainViewModel.kt) | Actions, state updates, effects, and login cancellation. |
-| [model](app/src/main/java/com/example/stateflow/model) | Login credentials, UI state, actions, and effects. |
-| [XmlLoginFragment.kt](app/src/main/java/com/example/stateflow/XmlLoginFragment.kt) | XML state and effect collectors. |
-| [fragment_login.xml](app/src/main/res/layout/fragment_login.xml) | XML form. |
-| [LoginDialogFragment.kt](app/src/main/java/com/example/stateflow/LoginDialogFragment.kt) | XML clear and result dialogs. |
-| [ComposeLoginFragment.kt](app/src/main/java/com/example/stateflow/ComposeLoginFragment.kt) | ComposeView, composition disposal, and theme. |
-| [LoginScreen.kt](app/src/main/java/com/example/stateflow/LoginScreen.kt) | Compose collectors in `LoginRoute` and rendering in `LoginScreen`. |
-| [LoginResources.kt](app/src/main/java/com/example/stateflow/LoginResources.kt) | Shared mapping from dialogs and effects to string resources. |
-| [libs.versions.toml](gradle/libs.versions.toml) | Plugin and dependency versions. |
+| Username | 3-20 ASCII letters, numbers, or underscores. |
+| Password | 8-64 characters with uppercase, lowercase, number, and symbol; no whitespace. |
 
-## Recent refactor
+`LoginRepository` defines login and account operations in business terms. Its results distinguish invalid input, rejected credentials, success, loaded accounts, and source failure.
 
-The original example handled input, flow collection, and dialogs in one activity. The recent refactor moved the login screens into fragments under one host activity and added a Compose implementation of the same form.
+### Data
 
-- Both screens now send `LoginAction` values to one activity-scoped ViewModel and render `LoginUiState` from StateFlow.
-- Kotlin 2.4 explicit backing fields give each flow one declaration with a public read-only type and private mutable storage.
-- SharedFlow carries temporary `LoginEffect` messages, with its replay and buffer behavior documented alongside the code. Dialogs remain in state because they need to survive recreation and renderer changes.
-- Login attempts reject duplicate submissions while loading. Confirming clear cancels a pending attempt, so it cannot display a result after the form is reset.
-- The build moved from Groovy scripts, Gradle 8, AGP 8, Kotlin 1.8, and SDK 33 to Kotlin DSL, a version catalog, the current pinned toolchain below, and SDK 37.
-- Tests now cover state transitions, effect delivery, lifecycle behavior, and switching between the two renderers. The generated arithmetic and package-name tests were replaced.
+Data implements the domain repository contract and owns source models, source contracts, mapping, and the local simulation.
 
-## How I used Codex
+`AccountDataSourceImpl` returns `AccountRecord` and `CredentialRecord`. `LoginRepositoryImpl` validates its boundary, compares credential fields deliberately, and maps account records into domain `Account` values. Data models never cross into the ViewModel. Domain models are mapped again into presentation models before the UI receives them.
 
-I used Codex to help refactor and document this existing project. I set the direction and constraints: modernize the Android setup, keep XML for the first migration, then add a switchable Compose example using the same architecture. I also asked for the repository to become a reference, with explanations in the README and source files written using my plain-language writing skill.
+That separation is intentional even when two models currently have similar fields. Each layer can change for its own reason without turning a source record into a UI contract.
 
-Codex inspected the existing code and build configuration, checked current official Android and Kotlin documentation, implemented the migration and second renderer, and ran builds, unit tests, lint, and emulator tests. The work stayed in the local repository so I could inspect and continue changing the implementation.
+### Dependency construction
 
-The AI work included defining the shared action/state/effect contract, handling cancellation and lifecycle boundaries, adding tests that compare the two UIs, and adopting Kotlin 2.4 explicit backing fields after checking their stable syntax and visibility rules. During verification, Codex corrected an ambiguous Compose test selector and a resource lookup that lint identified as configuration-dependent. The final checks are recorded below.
+`LoginViewModelFactory` is the composition root. It creates the data source, repository, validator, and ViewModel. The ViewModel depends on `LoginRepository`, while the factory is the only presentation entry point that knows the concrete data implementation. This example does not need a dependency-injection framework.
 
-## Development
+## Lifecycle and cancellation
 
-The project has one app module, `:app`. Its namespace and application ID are `com.example.stateflow`.
+The activity owns the shared ViewModel and the account-notice countdown. `repeatOnLifecycle(RESUMED)` pauses that countdown in the background. A `Mutex` prevents duplicate countdown owners from consuming time twice.
+
+The XML fragment collects with its view lifecycle. Compose uses `collectAsStateWithLifecycle` and disposes its composition with the fragment view. Replacing a renderer cancels its collectors while the activity-scoped state continues.
+
+Login work runs in `viewModelScope`. The ViewModel tracks the login `Job` because clearing the form must also cancel a pending result. Coroutine cancellation propagates through the repository and simulated source delay.
+
+## XML and Compose comparison
+
+| Concern | XML with View Binding | Compose |
+| --- | --- | --- |
+| State collection | `repeatOnLifecycle(RESUMED)` | `collectAsStateWithLifecycle(RESUMED)` |
+| Rendering | Updates bound views from state | Recomposition renders state |
+| Dialog | Child `DialogFragment` | Material `AlertDialog` |
+| Temporary effects | Material `Snackbar` | `SnackbarHostState` |
+| Local UI state | View properties | `remember` for password visibility and scrolling |
+| Palette | Deep blue on blue-gray | Copper on sand |
+
+Renderer colors live in presentation resources. Status colors have the same meaning in both views. Switching renderers does not change feature state or restart repository work.
+
+## Project structure
+
+```text
+app/src/main/java/com/example/mvvm2026/
+  presentation/
+    MainActivity.kt
+    theme/Mvvm2026Theme.kt
+    login/
+      MainViewModel.kt
+      LoginUiMapper.kt
+      LoginResources.kt
+      model/
+        account/
+        credential/
+        login/
+      xml/
+      compose/
+  domain/
+    model/
+      account/
+      credential/
+      login/
+    repository/LoginRepository.kt
+    usecase/ValidateCredentials.kt
+  data/
+    model/
+      account/
+      credential/
+    mapper/AccountMapper.kt
+    repository/LoginRepositoryImpl.kt
+    source/AccountDataSource.kt
+    sourceimpl/AccountDataSourceImpl.kt
+  di/LoginViewModelFactory.kt
+```
+
+Each standalone model or sealed hierarchy has its own file. Cases belonging to one sealed hierarchy stay together.
+
+This single-module layout fits one small feature with related account and credential concerns. As an application grows, presentation, domain, and data should be organized by feature. Independently owned features and shared core capabilities can move into Gradle modules when that improves dependency direction, reuse, ownership, or build isolation. Core modules should have named responsibilities such as networking, persistence, design system, or test support; they should not collect unrelated feature models.
+
+## Documentation conventions
+
+Documentation explains ownership, boundaries, and behavior that is easy to misunderstand from syntax alone. Every Kotlin file has one KDoc before its main declaration with `@author Stefan Bayne` and `@since 2026-10-17`. Sealed cases remain documented by their shared hierarchy. Small methods and direct implementation details rely on clear names instead of repeated comments.
+
+The README is the entry point for the complete example. `PROJECT_CONTEXT.md` records the project-specific decisions that should survive later changes. The reusable Android cleanup skill keeps its guidance generic and treats names from this repository as examples rather than defaults for unrelated projects.
+
+## Toolchain
 
 | Tool or setting | Version |
 | --- | --- |
 | Gradle wrapper | 9.8.1 |
-| Android Gradle Plugin | 9.4.1, with built-in Kotlin |
-| Kotlin and Compose compiler plugin | 2.4.21 |
-| Kotlin language / API version | 2.4 / 2.4 |
+| Android Gradle Plugin | 9.4.1 with built-in Kotlin |
+| Kotlin / Compose compiler plugin | 2.4.21 |
+| Kotlin language and API | 2.4 |
 | Compose BOM | 2026.09.00 |
-| Java and Kotlin bytecode target | 17 |
-| Minimum / compile / target Android SDK | 26 / 37 / 37 |
+| Java and Kotlin target | 17 |
+| Android min / compile / target SDK | 26 / 37 / 37 |
 
-Use JDK 17 or newer, Android SDK Platform 37, and Android SDK Build Tools 36.0.0. Configure the SDK location through Android Studio, `ANDROID_HOME`, or an ignored `local.properties` file.
-
-The root build script sets the Kotlin Gradle plugin dependency to match the Compose compiler version. The app uses AGP's built-in Kotlin support and applies the Compose compiler plugin. Both View Binding and Compose are enabled. Dependencies are pinned in the version catalog; Compose library versions come from the BOM. See the [Compose setup guide](https://developer.android.com/develop/ui/compose/setup-compose-dependencies-and-compiler).
+The app module enables View Binding and Compose. Dependencies are declared in the version catalog. Compose libraries use the BOM.
 
 ```sh
-./gradlew assembleDebug assembleRelease
+./gradlew assembleDebug
 ./gradlew testDebugUnitTest lintDebug
 ./gradlew connectedDebugAndroidTest
 ```
 
-The last command requires an emulator or connected Android device. Release APKs are unsigned; release minification is disabled.
+The instrumentation suite requires an emulator or connected device. A device with **Don't keep activities** enabled cannot launch these `ActivityScenario` tests until that developer option is disabled.
 
-## Tests and limits
+## Tests
 
-Unit tests cover login timing and outcomes, repeated submissions, cancellation, retry, confirmation priority, and SharedFlow delivery with and without subscribers. Instrumentation tests compare form values across the UI switch, switch during login, recreate both examples, acknowledge results, and check Snackbar delivery without replay.
+Unit tests cover validation boundaries, source delays, repository mapping and rejection, cancellation, ViewModel state transitions, temporary-effect ordering, account loading, countdown pause/resume, manual dismissal, and duplicate countdown callers.
 
-The XML and Compose refactor was verified on October 17, 2026 with 11 passing instrumentation tests on Android 16 (API 36). The six Compose comparison tests also passed with the current v2 test rule. The explicit backing-field follow-up passes debug/release builds, instrumentation test compilation, all 11 unit tests, and debug lint with no issues. Device tests have not been rerun for that follow-up; API 26 and API 37 runtime behavior has not been tested.
+Instrumentation tests exercise both renderers, shared inputs, login results, validation recovery, dialogs, recreation, renderer changes, effect replay behavior, and the account notice lifecycle.
 
-Authentication is a local simulation. There is no server, database, or navigation after success. Form values and login state survive activity recreation through the ViewModel, but are reset if Android kills the app. The selected UI is restored by FragmentManager. In-flight requests are not restored after Android kills the app.
+The latest verification passed 43 unit tests, 16 Android UI tests on an Android 16 emulator, debug assembly, and Android lint with no issues.
+
+## Codex-assisted refactor
+
+I used Codex as a coding collaborator while reverse engineering and rebuilding this example. I set the architecture, naming, documentation style, and production-informed flow decisions. Codex inspected the existing project, migrated the toolchain, implemented reviewed changes, updated tests and KDoc, and ran builds, lint, emulator checks, and visual checks on a Samsung device.
+
+The work included moving behavior out of activities, adding the layer boundaries and separate models, implementing explicit mappings, comparing XML and Compose against one ViewModel, using Kotlin explicit backing fields, and documenting the reasoning. I reviewed the results and changed decisions as the example developed, including effect delivery, repository ownership, package structure, account-loading behavior, and UI design.
+
+## Current limits
+
+Authentication and account loading are local simulations. There is no API, database, or post-login navigation. The ViewModel keeps state across activity recreation; it does not restore form state after Android kills the app. Passwords are not written to saved state.
+
+An API can replace the simulated data source later without changing the domain repository contract or the renderer contracts. That is the next useful expansion for this guide.

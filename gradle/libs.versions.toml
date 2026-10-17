@@ -1,7 +1,3 @@
-# Plugin and library aliases used by the Kotlin build scripts. Kotlin and the Compose compiler share
-# one version; the Compose BOM sets UI library versions. Runtime dependencies and test dependencies
-# are declared separately so each renderer can be compared with the same shared ViewModel.
-
 [versions]
 agp = "9.4.1"
 kotlin = "2.4.21"

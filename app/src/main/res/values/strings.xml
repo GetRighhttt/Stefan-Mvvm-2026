@@ -1,24 +1,48 @@
-<!--
-Supplies the labels and messages used by both UI implementations. LoginResources maps dialog and
-effect values to these IDs. Keeping that mapping and the translated text outside the ViewModel
-lets the state and action contract stay independent of Android UI resources.
--->
-<resources>
-    <string name="app_name">StateFlow</string>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="app_name">MVVM 2026</string>
     <string name="password">Password</string>
-    <string name="login">Login</string>
+    <string name="login">Sign in</string>
     <string name="clear">Clear</string>
-    <string name="login_stateflow_example">Login StateFlow Example</string>
-    <string name="login_helper">Login with your credentials</string>
-    <string name="password_helper">Please enter your password</string>
+    <string name="login_heading">Welcome back</string>
+    <string name="username">Username</string>
+    <!-- The mixed-case password is a literal demo credential, not a misspelled word. -->
+    <string name="sample_credentials_title">Try a sample account</string>
+    <string name="sample_username" translatable="false">username</string>
+    <string name="sample_password" translatable="false" tools:ignore="Typos">Password1!</string>
+    <!-- These two-bound ranges describe a policy; plural selection for one count does not apply. -->
+    <string name="username_requirements" tools:ignore="PluralsCandidate">%1$d–%2$d characters · Letters, numbers, or underscores.</string>
+    <string name="password_requirements" tools:ignore="PluralsCandidate">%1$d–%2$d characters · Uppercase, lowercase, number, and symbol. No spaces.</string>
+    <string name="username_required">Enter a username.</string>
+    <string name="username_length" tools:ignore="PluralsCandidate">Use %1$d–%2$d characters for your username.</string>
+    <string name="username_characters">Use letters, numbers, or underscores only.</string>
+    <string name="password_required">Enter a password.</string>
+    <string name="password_length" tools:ignore="PluralsCandidate">Use %1$d–%2$d characters for your password.</string>
+    <string name="password_complexity">Include an uppercase letter, a lowercase letter, a number, and a symbol.</string>
+    <string name="password_whitespace">Remove spaces and other whitespace from your password.</string>
     <string name="login_dialog_title">Login result</string>
     <string name="login_success">Success! You have successfully logged in.</string>
     <string name="login_failure">Login attempt failed. Please try again.</string>
     <string name="clear_confirmation">Are you sure you want to clear all the data?</string>
     <string name="loading">Logging in</string>
     <string name="use_compose">Use Compose</string>
-    <string name="missing_credentials">Enter a username and password.</string>
+    <string name="validation_failed">Check the highlighted fields.</string>
     <string name="form_cleared">Form cleared.</string>
-    <string name="show_password">Show</string>
-    <string name="hide_password">Hide</string>
+    <string name="show_password">Show password</string>
+    <string name="hide_password">Hide password</string>
+    <string name="account_info_title">Preparing your accounts</string>
+    <string name="account_info_loading">Fetching your sample account details.</string>
+    <string name="account_info_success_title">Accounts are ready</string>
+    <string name="account_info_failure_title">Could not load accounts</string>
+    <string name="account_info_dismiss">Dismiss now</string>
+    <string name="account_info_failure">Account information could not be loaded.</string>
+    <string name="screen_subtitle">Use the sample account to explore sign-in.</string>
+    <string name="lab_title">MVVM 2026</string>
+    <plurals name="accounts_loaded">
+        <item quantity="one">%d sample account loaded</item>
+        <item quantity="other">%d sample accounts loaded</item>
+    </plurals>
+    <plurals name="account_info_dismiss_countdown">
+        <item quantity="one">Dismisses in %d second</item>
+        <item quantity="other">Dismisses in %d seconds</item>
+    </plurals>
 </resources>

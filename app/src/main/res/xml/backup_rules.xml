@@ -1,7 +1,2 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-Backup configuration referenced by the manifest's fullBackupContent attribute. The empty root adds
-no custom include or exclude rules. If the example later stores files or preferences, define their
-backup policy here and in data_extraction_rules.xml. Login state currently lives in the ViewModel.
--->
 <full-backup-content />

@@ -1,14 +1,37 @@
-<!--
-Sets the Material DayNight theme for the activity, XML widgets, and DialogFragment. The alias used
-by the manifest inherits this base style. ComposeLoginFragment chooses its own Compose MaterialTheme
-from the same system light or dark setting.
--->
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.StateFlow" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+<resources>
+    <style name="Base.Theme.Mvvm2026" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/xml_primary</item>
+        <item name="colorOnPrimary">@color/xml_on_primary</item>
+        <item name="colorPrimaryContainer">@color/xml_secondary_container</item>
+        <item name="colorOnPrimaryContainer">@color/xml_on_secondary_container</item>
+        <item name="colorSecondary">@color/xml_primary</item>
+        <item name="colorOnSecondary">@color/xml_on_primary</item>
+        <item name="colorSecondaryContainer">@color/xml_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/xml_on_secondary_container</item>
+        <item name="colorError">@color/status_error</item>
+        <item name="colorOnError">@color/on_status_error</item>
+        <item name="colorErrorContainer">@color/error_container</item>
+        <item name="colorOnErrorContainer">@color/on_error_container</item>
+        <item name="android:colorBackground">@color/xml_background</item>
+        <item name="colorSurface">@color/surface_card</item>
+        <item name="android:windowBackground">@color/xml_background</item>
+        <item name="colorSurfaceContainerHighest">@color/surface_low</item>
+        <item name="colorSurfaceContainerHigh">@color/surface_low</item>
+        <item name="colorSurfaceContainer">@color/surface_low</item>
+        <item name="colorSurfaceContainerLowest">@color/surface_card</item>
+        <item name="colorSurfaceContainerLow">@color/surface_low</item>
+        <item name="colorOnSurface">@color/surface_text</item>
+        <item name="colorOnSurfaceVariant">@color/surface_muted</item>
+        <item name="colorOutline">@color/surface_outline</item>
+        <item name="colorOutlineVariant">@color/surface_outline_variant</item>
     </style>
-
-    <style name="Theme.StateFlow" parent="Base.Theme.StateFlow" />
+    <style name="Theme.Mvvm2026" parent="Base.Theme.Mvvm2026" />
+    <style name="Widget.Mvvm2026.TextInput" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxCornerRadiusTopStart">14dp</item>
+        <item name="boxCornerRadiusTopEnd">14dp</item>
+        <item name="boxCornerRadiusBottomStart">14dp</item>
+        <item name="boxCornerRadiusBottomEnd">14dp</item>
+        <item name="boxBackgroundColor">@color/surface_card</item>
+        <item name="startIconTint">@color/xml_primary</item>
+    </style>
 </resources>

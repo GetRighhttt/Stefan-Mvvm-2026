@@ -1,12 +1,1 @@
-<!--
-Overrides the XML base theme when Android selects night resources. Theme.StateFlow inherits this
-base through the default values file. Compose uses isSystemInDarkTheme in ComposeLoginFragment to
-choose the corresponding Compose color scheme.
--->
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.StateFlow" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
-    </style>
-</resources>
+<resources />

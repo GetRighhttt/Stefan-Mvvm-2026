@@ -1,9 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-Data extraction configuration referenced by the manifest's dataExtractionRules attribute. The cloud
-backup element has no custom rules, and no device-transfer policy is declared. Add a policy for any
-future persisted data alongside backup_rules.xml; the sample's login state is currently in memory.
--->
 <data-extraction-rules>
     <cloud-backup />
 </data-extraction-rules>

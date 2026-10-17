@@ -1,27 +1,14 @@
-/**
- * Builds both login renderers into the same APK so switching UI does not change the app or ViewModel.
- *
- * The Android block keeps the namespace, SDK levels, bytecode target, and release settings together.
- * View Binding generates the XML binding classes; Compose enables compiler support for the Composable
- * screen. The Kotlin bytecode target matches Java 17. Language and API versions are pinned to 2.4,
- * where explicit backing fields are stable, so the example needs no experimental compiler flag.
- *
- * Dependencies use the version catalog. The Compose BOM supplies compatible UI library versions for
- * both app and instrumentation tests. Coroutine tests exercise the ViewModel on the JVM; Espresso and
- * Compose tests exercise the activity with either renderer. Release minification is disabled, so the
- * configured ProGuard rules take effect only if it is enabled later.
- */
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
 }
 
 android {
-    namespace = "com.example.stateflow"
+    namespace = "com.example.mvvm2026"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.stateflow"
+        applicationId = "com.example.mvvm2026"
         minSdk = 26
         targetSdk = 37
         versionCode = 1
