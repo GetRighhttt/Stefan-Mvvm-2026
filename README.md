@@ -1,14 +1,14 @@
 # MVVM_2026
 
-MVVM_2026 is my reference for structuring a modern Android feature with MVVM. The project keeps the example small enough to read in one sitting while showing the boundaries I expect in production code: separate presentation, domain, and data models; explicit mapping between layers; repository contracts owned by domain; coroutine cancellation; durable state; and temporary effects.
+MVVM_2026 is my reference for structuring an Android feature with MVVM. It demonstrates separate presentation, domain, and data models, mapping between layers, domain repository contracts, coroutine cancellation, UI state, and temporary effects.
 
-The same login feature has XML with View Binding and Jetpack Compose renderers. The **Use Compose** switch replaces one renderer with the other while both use the same activity-scoped `MainViewModel`. The different palettes make the active renderer clear. The state, validation, repository work, and loaded account data remain the same.
+The login feature has XML with View Binding and Jetpack Compose renderers. The **Use Compose** switch changes the renderer. Both use the same activity-scoped `MainViewModel`, so switching keeps form state, validation, repository work, and loaded account data. Each renderer has a different color palette.
 
-This repository is intended to be read. Each Kotlin file has one main KDoc that explains its responsibility and the decisions that matter. The README describes how those files work together.
+Each Kotlin file has a KDoc explaining its responsibility and design decisions. This README describes how the files work together.
 
 ## Screenshots
 
-Both renderers use the same state, actions, validation, and repository work while keeping their own presentation style.
+The screenshots show the two renderers.
 
 | XML with View Binding | Jetpack Compose |
 | --- | --- |
@@ -16,7 +16,7 @@ Both renderers use the same state, actions, validation, and repository work whil
 
 ## Refactoring record
 
-This repository began as a focused StateFlow example. The refactor turned it into a current MVVM reference without hiding that history behind a finished sample. The main changes were:
+This repository began as a StateFlow example. I expanded it into an MVVM reference with these changes:
 
 - Modernized Gradle, the Android Gradle Plugin, Kotlin, Android SDK levels, and AndroidX dependencies.
 - Renamed the project, package, application ID, themes, and visible branding to `MVVM_2026`.
@@ -25,9 +25,9 @@ This repository began as a focused StateFlow example. The refactor turned it int
 - Split presentation, domain, and data responsibilities, with models and mappings owned by each layer.
 - Moved repository contracts into domain and their concrete implementation and simulated source into data.
 - Added typed credential validation, simulated authentication, account loading, cancellation, and lifecycle-aware notice dismissal.
-- Replaced incidental comments with one focused KDoc per Kotlin file and tests that document the important behavior.
+- Added a KDoc per Kotlin file and tests for state, validation, cancellation, and lifecycle behavior.
 
-The refactor follows the structure this project needs now. Feature and core modules can be introduced when ownership, reuse, or build boundaries justify them.
+The example uses one Gradle module. Separate feature or core modules would be useful if the project needed independent ownership, reuse, or build boundaries.
 
 ## Run the example
 
@@ -61,7 +61,7 @@ flowchart LR
     Source -. implemented by .-> Simulation[AccountDataSourceImpl]
 ```
 
-Only the selected renderer is mounted. The diagram shows two views of one feature, not two screens collecting effects at the same time.
+Only the selected renderer is mounted and collects effects.
 
 ### Presentation
 
@@ -75,7 +75,7 @@ Presentation owns Android UI, renderer behavior, observable UI models, actions, 
 | `StateFlow<AccountUiState>` | Independent account loading, loaded display models, failure, and notice countdown. |
 | `SharedFlow<LoginEffect>` | Temporary validation and form-cleared Snackbar messages. |
 
-Durable information belongs in `StateFlow`. A result dialog must survive recreation, so it is derived from `LoginUiState`. Loaded accounts and the notice countdown also remain in state. Snackbars are temporary and use a non-replaying `SharedFlow`.
+Information needed after activity recreation belongs in `StateFlow`. The result dialog is derived from `LoginUiState`. Loaded accounts and the notice countdown also remain in state. Snackbars use a non-replaying `SharedFlow` because they are temporary.
 
 The effects flow has `replay = 0`, one extra buffer slot, and `BufferOverflow.SUSPEND`. The ViewModel calls `emit` from `viewModelScope`. Suspension applies backpressure when an active collector fills the buffer. With no subscriber, replay-zero effects are not retained for a later renderer. Completion of `emit` means the flow accepted the value under those rules; it cannot guarantee that UI or business work will succeed.
 
@@ -105,9 +105,9 @@ Domain owns business models, validation rules, repository contracts, and results
 
 Data implements the domain repository contract and owns source models, source contracts, mapping, and the local simulation.
 
-`AccountDataSourceImpl` returns `AccountRecord` and `CredentialRecord`. `LoginRepositoryImpl` validates its boundary, compares credential fields deliberately, and maps account records into domain `Account` values. Data models never cross into the ViewModel. Domain models are mapped again into presentation models before the UI receives them.
+`AccountDataSourceImpl` returns `AccountRecord` and `CredentialRecord`. `LoginRepositoryImpl` validates input, compares credential fields, and maps account records into domain `Account` values. Data models never cross into the ViewModel. Domain models are mapped into presentation models before the UI receives them.
 
-That separation is intentional even when two models currently have similar fields. Each layer can change for its own reason without turning a source record into a UI contract.
+Separate models let each layer change independently, even when their fields currently match.
 
 ### Dependency construction
 
@@ -177,7 +177,7 @@ This single-module layout fits one small feature with related account and creden
 
 Documentation explains ownership, boundaries, and behavior that is easy to misunderstand from syntax alone. Every Kotlin file has one KDoc before its main declaration with `@author Stefan Bayne` and `@since 2026-10-17`. Sealed cases remain documented by their shared hierarchy. Small methods and direct implementation details rely on clear names instead of repeated comments.
 
-The README is the entry point for the complete example. `PROJECT_CONTEXT.md` records the project-specific decisions that should survive later changes. The reusable Android cleanup skill keeps its guidance generic and treats names from this repository as examples rather than defaults for unrelated projects.
+`PROJECT_CONTEXT.md` records decisions about this example for future changes.
 
 ## Toolchain
 
@@ -207,16 +207,16 @@ Unit tests cover validation boundaries, source delays, repository mapping and re
 
 Instrumentation tests exercise both renderers, shared inputs, login results, validation recovery, dialogs, recreation, renderer changes, effect replay behavior, and the account notice lifecycle.
 
-The latest verification passed 43 unit tests, 16 Android UI tests on an Android 16 emulator, debug assembly, and Android lint with no issues.
+The recorded refactor verification passed 43 unit tests, 16 Android UI tests on an Android 16 emulator, debug assembly, and Android lint with no issues.
 
 ## Codex-assisted refactor
 
-I used Codex as a coding collaborator while reverse engineering and rebuilding this example. I set the architecture, naming, documentation style, and production-informed flow decisions. Codex inspected the existing project, migrated the toolchain, implemented reviewed changes, updated tests and KDoc, and ran builds, lint, emulator checks, and visual checks on a Samsung device.
+I used Codex while reviewing and rebuilding this example. I set the architecture, naming, documentation style, and flow behavior. Codex inspected the project, migrated the toolchain, implemented changes, updated tests and KDoc, and ran builds, lint, emulator checks, and visual checks on a Samsung device.
 
-The work included moving behavior out of activities, adding the layer boundaries and separate models, implementing explicit mappings, comparing XML and Compose against one ViewModel, using Kotlin explicit backing fields, and documenting the reasoning. I reviewed the results and changed decisions as the example developed, including effect delivery, repository ownership, package structure, account-loading behavior, and UI design.
+I reviewed the changes and revised effect delivery, repository ownership, package structure, account loading, and UI design as the example developed.
 
 ## Current limits
 
 Authentication and account loading are local simulations. There is no API, database, or post-login navigation. The ViewModel keeps state across activity recreation; it does not restore form state after Android kills the app. Passwords are not written to saved state.
 
-An API can replace the simulated data source later without changing the domain repository contract or the renderer contracts. That is the next useful expansion for this guide.
+An API implementation could replace the simulated data source behind the existing domain repository contract.
